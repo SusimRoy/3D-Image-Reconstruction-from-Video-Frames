@@ -6,8 +6,8 @@ from scipy import linalg
 from scipy.linalg import null_space
 from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
-from corner import corners
-from initial import pts1,pts2
+from corner import corner
+from initial import points
 
 def takethird(elem):
     return elem[2]
@@ -305,73 +305,79 @@ def world_cord(P1, P2, pt1, pt2):
         WC = WC/WC[3]
         world_coord.append([WC[0], WC[1], WC[2]])
     return world_coord
+
+def accept(img1, img2):
+    global m_cor1,m_cor2
+
+    m_cor1,m_cor2 = points(img1, img2)
+
+   # m_cor1 = np.array([[107,197],[351,295],[461,151],[247,83],[314,142],[277,157],[296,226],[176,411],[346,502],[427,368]])
+   # m_cor2 = np.array([[112,150],[320,272],[465,145],[270,55],[320,119],[281,130],[282,199],[171,365],[317,479],[422,361]])
+
+    inlier_img(img1, img2, m_cor1, m_cor2)
+    norm_pt1, T1 = normalize(m_cor1)
+    norm_pt2, T2 = normalize(m_cor2)
+
+    F = computeF(norm_pt1, norm_pt2, T1, T2)
+    e1, e2, P1, P2 = calcparam(F)
+
+    F_refined = optim_LM(P1 , P2, m_cor1, m_cor2)
+    e1_ref, e2_ref, P1_ref, P2_ref = calcparam(F_refined)
+    #
+    F_rect, H1, H2= rect_homography(img1, img2, m_cor1, m_cor2, e1_ref, e2_ref, F_refined, P1_ref, P2_ref)
+    e1_rect, e2_rect, P1_rect, P2_rect = calcparam(F_rect)
+    ##
+    name = 'left'
+    rectify_img(img1, H2,name)
+    name = 'right'
+    rectify_img(img2, H2,name)
+
+
+    #Function calls for 3D projection using rectified images
+
+    img3 = cv2.imread('left_rectified.jpg') #left
+    img4 = cv2.imread('right_rectified.jpg') #right
+    l1, l2 = SIFT(img3,img4)
+    m_cor1, m_cor2 = rearrange(l1, l2)
+    norm_pt1, T1 = normalize(m_cor1)
+    norm_pt2, T2 = normalize(m_cor2)
+    F = computeF(norm_pt1, norm_pt2, T1, T2)
+    e1, e2, P1, P2 = calcparam(F)
+    F_refined = optim_LM(P1 , P2, m_cor1, m_cor2)
+    e1_ref, e2_ref, P1_ref, P2_ref = calcparam(F_refined)
+
+    F_rect, H1, H2 = rect_homography(img3, img4, m_cor1, m_cor2, e1_ref, e2_ref, F_refined, P1_ref, P2_ref)
+    e1_rect, e2_rect, P1_rect, P2_rect = calcparam(F_rect)
+
+    bound1 = corner(img1)
+    bound2 = corner(img2)
+
+   # bound1 = np.array([[160,196],[405,253],[486,128],[297,83],[249,377],[412,419],[470,499]])#
+    #bound2 = np.array([[163,149],[373,238],[468,124],[302,55],[255,339],[397,405],[463,294]])
+
+    wc = np.divide (world_cord(P1_rect, P2_rect, m_cor1, m_cor2),1)
+    wc_b = np.divide (world_cord(P1_rect, P2_rect, bound1, bound2),1)
+
+    #3D plotting of world coordinates 
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+
+    for i in range (len(wc)):
+        if i != 20 and i != 35:
+            ax.scatter3D(wc[i][0], wc[i][1], wc[i][2], color='b')
+
+    for i in range (len(wc_b)):
+        ax.scatter3D(wc_b[i][0],wc_b[i][1],wc_b[i][2], color='g')
     
-#Function call for creating rectified images
-img1 = cv2.imread('tea_left_2.jpg') #left
-img2 = cv2.imread('tea_right_2.jpg') #right
+    x = [wc_b[0],wc_b[1],wc_b[2],wc_b[3],wc_b[4],wc_b[5],wc_b[6]]    
+    plt.plot([x[0][0],x[1][0]],[x[0][1],x[1][1]],[x[0][2],x[1][2]] , color='r')
+    plt.plot([x[1][0],x[2][0]],[x[1][1],x[2][1]],[x[1][2],x[2][2]] , color='r')
+    plt.plot([x[2][0],x[3][0]],[x[2][1],x[3][1]],[x[2][2],x[3][2]] , color='r')#
+    plt.plot([x[3][0],x[0][0]],[x[3][1],x[0][1]],[x[3][2],x[0][2]] , color='r')
+    plt.plot([x[0][0],x[4][0]],[x[0][1],x[4][1]],[x[0][2],x[4][2]] , color='r')
+    plt.plot([x[5][0],x[1][0]],[x[5][1],x[1][1]],[x[5][2],x[1][2]] , color='r')
+    plt.plot([x[6][0],x[5][0]],[x[6][1],x[5][1]],[x[6][2],x[5][2]] , color='r')
+    plt.plot([x[6][0],x[2][0]],[x[6][1],x[2][1]],[x[6][2],x[2][2]] , color='r')    
+    plt.plot([x[5][0],x[4][0]],[x[5][1],x[4][1]],[x[5][2],x[4][2]] , color='r')
 
-m_cor1 = np.array([[107,197],[351,295],[461,151],[247,83],[314,142],[277,157],[296,226],[176,411],[346,502],[427,368]])
-m_cor2 = np.array([[112,150],[320,272],[465,145],[270,55],[320,119],[281,130],[282,199],[171,365],[317,479],[422,361]])
-
-inlier_img(img1, img2, m_cor1, m_cor2)
-norm_pt1, T1 = normalize(m_cor1)
-norm_pt2, T2 = normalize(m_cor2)
-
-F = computeF(norm_pt1, norm_pt2, T1, T2)
-e1, e2, P1, P2 = calcparam(F)
-
-F_refined = optim_LM(P1 , P2, m_cor1, m_cor2)
-e1_ref, e2_ref, P1_ref, P2_ref = calcparam(F_refined)
-#
-F_rect, H1, H2= rect_homography(img1, img2, m_cor1, m_cor2, e1_ref, e2_ref, F_refined, P1_ref, P2_ref)
-e1_rect, e2_rect, P1_rect, P2_rect = calcparam(F_rect)
-##
-name = 'left'
-rectify_img(img1, H2,name)
-name = 'right'
-rectify_img(img2, H2,name)
-
-
-#Function calls for 3D projection using rectified images
-
-img3 = cv2.imread('left_rectified.jpg') #left
-img4 = cv2.imread('right_rectified.jpg') #right
-l1, l2 = SIFT(img3,img4)
-m_cor1, m_cor2 = rearrange(l1, l2)
-norm_pt1, T1 = normalize(m_cor1)
-norm_pt2, T2 = normalize(m_cor2)
-F = computeF(norm_pt1, norm_pt2, T1, T2)
-e1, e2, P1, P2 = calcparam(F)
-F_refined = optim_LM(P1 , P2, m_cor1, m_cor2)
-e1_ref, e2_ref, P1_ref, P2_ref = calcparam(F_refined)
-
-F_rect, H1, H2 = rect_homography(img3, img4, m_cor1, m_cor2, e1_ref, e2_ref, F_refined, P1_ref, P2_ref)
-e1_rect, e2_rect, P1_rect, P2_rect = calcparam(F_rect)
-
-bound1 = np.array([[160,196],[405,253],[486,128],[297,83],[249,377],[412,419],[470,499]])#
-bound2 = np.array([[163,149],[373,238],[468,124],[302,55],[255,339],[397,405],[463,294]])
-
-wc = np.divide (world_cord(P1_rect, P2_rect, m_cor1, m_cor2),1)
-wc_b = np.divide (world_cord(P1_rect, P2_rect, bound1, bound2),1)
-
-#3D plotting of world coordinates 
-fig = plt.figure()
-ax = plt.axes(projection='3d')
-
-for i in range (len(wc)):
-    if i != 20 and i != 35:
-        ax.scatter3D(wc[i][0], wc[i][1], wc[i][2], color='b')
-
-for i in range (len(wc_b)):
-    ax.scatter3D(wc_b[i][0],wc_b[i][1],wc_b[i][2], color='g')
-   
-x = [wc_b[0],wc_b[1],wc_b[2],wc_b[3],wc_b[4],wc_b[5],wc_b[6]]    
-plt.plot([x[0][0],x[1][0]],[x[0][1],x[1][1]],[x[0][2],x[1][2]] , color='r')
-plt.plot([x[1][0],x[2][0]],[x[1][1],x[2][1]],[x[1][2],x[2][2]] , color='r')
-plt.plot([x[2][0],x[3][0]],[x[2][1],x[3][1]],[x[2][2],x[3][2]] , color='r')#
-plt.plot([x[3][0],x[0][0]],[x[3][1],x[0][1]],[x[3][2],x[0][2]] , color='r')
-plt.plot([x[0][0],x[4][0]],[x[0][1],x[4][1]],[x[0][2],x[4][2]] , color='r')
-plt.plot([x[5][0],x[1][0]],[x[5][1],x[1][1]],[x[5][2],x[1][2]] , color='r')
-plt.plot([x[6][0],x[5][0]],[x[6][1],x[5][1]],[x[6][2],x[5][2]] , color='r')
-plt.plot([x[6][0],x[2][0]],[x[6][1],x[2][1]],[x[6][2],x[2][2]] , color='r')    
-plt.plot([x[5][0],x[4][0]],[x[5][1],x[4][1]],[x[5][2],x[4][2]] , color='r')
+    return wc_b
