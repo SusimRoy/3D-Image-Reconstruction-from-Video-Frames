@@ -311,9 +311,6 @@ def accept(img1, img2):
 
     m_cor1,m_cor2 = points(img1, img2)
 
-   # m_cor1 = np.array([[107,197],[351,295],[461,151],[247,83],[314,142],[277,157],[296,226],[176,411],[346,502],[427,368]])
-   # m_cor2 = np.array([[112,150],[320,272],[465,145],[270,55],[320,119],[281,130],[282,199],[171,365],[317,479],[422,361]])
-
     inlier_img(img1, img2, m_cor1, m_cor2)
     norm_pt1, T1 = normalize(m_cor1)
     norm_pt2, T2 = normalize(m_cor2)
@@ -351,10 +348,7 @@ def accept(img1, img2):
 
     bound1 = corner(img1)
     bound2 = corner(img2)
-
-   # bound1 = np.array([[160,196],[405,253],[486,128],[297,83],[249,377],[412,419],[470,499]])#
-    #bound2 = np.array([[163,149],[373,238],[468,124],[302,55],[255,339],[397,405],[463,294]])
-
+    
     wc = np.divide (world_cord(P1_rect, P2_rect, m_cor1, m_cor2),1)
     wc_b = np.divide (world_cord(P1_rect, P2_rect, bound1, bound2),1)
 
