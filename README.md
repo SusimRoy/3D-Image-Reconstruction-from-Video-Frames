@@ -8,6 +8,6 @@ Dependencies:
 5. opencv
 6. mpl_toolkits
 
-##How to run?
+## How to run?
 
 Run the python file : window.py
